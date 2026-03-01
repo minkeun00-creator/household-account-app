@@ -159,9 +159,7 @@ function App(){
   const [parseErr,setParseErr]=useState("");
   const fileRef=useRef();
   const importRef=useRef();
-
   const [toast,setToast]=useState("");
-  const importRef=useRef();
 
   const exportData=()=>{
     const data=JSON.stringify({expenses,cats,recs},null,2);
