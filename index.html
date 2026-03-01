@@ -218,6 +218,12 @@ function App(){
         memo:`${form.memo?form.memo+" ":""}할부 ${i+1}/${iMonths}`,installmentGroup:gid
       }))]);
       showToast(`${iMonths}개월 할부 등록`);
+    } else if(iMode==="recurring"){
+      const nr={id:Date.now(),amount:amt,method:form.method,category:form.category,memo:form.memo,startDate:form.date,endDate:form.hasEnd?form.endDate:"",active:true};
+      const newOnes=genRec([nr],expenses);
+      if(newOnes.length)setExpenses(es=>[...es,...newOnes]);
+      setRecs(rs=>[...rs,nr]);
+      showToast(`반복 지출 등록 (${newOnes.length}건 생성)`);
     } else {
       setExpenses(es=>[...es,{...form,id:Date.now(),amount:amt}]);
       showToast("등록됐습니다");
@@ -430,16 +436,24 @@ JSON 배열만 반환, 다른 텍스트 없이:
       {tab==="input"&&<div style={{padding:20}}>
         <div style={{fontSize:18,fontWeight:700,marginBottom:16}}>{editId?"지출 수정":"지출 등록"}</div>
         {!editId&&<div style={{display:"flex",background:"#1a1a2e",borderRadius:12,padding:4,marginBottom:18}}>
-          {[["normal","일반"],["installment","💳 할부"]].map(([m,l])=>(
-            <button key={m} onClick={()=>setIMode(m)} style={{flex:1,padding:"9px 0",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:iMode===m?"#667eea":"transparent",color:iMode===m?"#fff":"#555"}}>{l}</button>
+          {[["normal","일반"],["installment","💳 할부"],["recurring","🔄 반복"]].map(([m,l])=>(
+            <button key={m} onClick={()=>setIMode(m)} style={{flex:1,padding:"9px 0",borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:iMode===m?"#667eea":"transparent",color:iMode===m?"#fff":"#555"}}>{l}</button>
           ))}
         </div>}
-        <div style={{marginBottom:14}}><label style={LB}>날짜{iMode==="installment"&&" (첫 납부일)"}</label><input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={IB}/></div>
+        <div style={{marginBottom:14}}><label style={LB}>{iMode==="recurring"?"시작일":iMode==="installment"?"날짜 (첫 납부일)":"날짜"}</label><input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} style={IB}/></div>
         <div style={{marginBottom:14}}><label style={LB}>금액 (원){iMode==="installment"&&" — 총액"}</label><input type="number" inputMode="numeric" placeholder="0" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))} style={IB}/></div>
         {iMode==="installment"&&<div style={{marginBottom:14,background:"#1a1a2e",borderRadius:14,padding:14,border:"1px solid #2a2a3a"}}>
           <label style={LB}>할부 개월</label>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>{INST_OPTS.map(n=><button key={n} onClick={()=>setIMonths(n)} style={chip(iMonths===n,"#FFE66D")}>{n}개월</button>)}</div>
           {form.amount&&+form.amount>0&&<div style={{fontSize:13,color:"#8888aa"}}>월 <b style={{color:"#FFE66D"}}>₩{fmt(Math.floor(+form.amount/iMonths))}</b> × {iMonths}개월</div>}
+        </div>}
+        {iMode==="recurring"&&<div style={{marginBottom:14,background:"#1a1a2e",borderRadius:14,padding:14,border:"1px solid #2a2a3a"}}>
+          <label style={LB}>종료일 설정</label>
+          <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"#8888aa",marginBottom:8,cursor:"pointer"}}>
+            <input type="checkbox" checked={form.hasEnd||false} onChange={e=>setForm(f=>({...f,hasEnd:e.target.checked}))} style={{accentColor:"#667eea",width:16,height:16}}/>종료일 있음
+          </label>
+          {form.hasEnd&&<input type="date" value={form.endDate||""} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))} style={IB}/>}
+          <div style={{fontSize:12,color:"#555",marginTop:8}}>매월 시작일과 같은 날에 자동 등록됩니다</div>
         </div>}
         <div style={{marginBottom:14}}><label style={LB}>지출 방식</label><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{METHODS.map(m=><button key={m} onClick={()=>setForm(f=>({...f,method:m}))} style={chip(form.method===m)}>{m}</button>)}</div></div>
         <div style={{marginBottom:14}}><label style={LB}>카테고리</label>
@@ -450,7 +464,7 @@ JSON 배열만 반환, 다른 텍스트 없이:
         </div>
         <div style={{marginBottom:24}}><label style={LB}>메모 (선택)</label><input placeholder="메모를 입력하세요" value={form.memo} onChange={e=>setForm(f=>({...f,memo:e.target.value}))} style={IB}/></div>
         <button onClick={submitExp} style={{width:"100%",padding:16,borderRadius:16,border:"none",background:"linear-gradient(135deg,#667eea,#764ba2)",color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer"}}>
-          {editId?"수정 완료":iMode==="installment"?`${iMonths}개월 할부 등록`:"등록하기"}
+          {editId?"수정 완료":iMode==="installment"?`${iMonths}개월 할부 등록`:iMode==="recurring"?"🔄 반복 지출 등록":"등록하기"}
         </button>
         {editId&&<button onClick={()=>{setEditId(null);resetForm();}} style={{width:"100%",padding:14,borderRadius:16,border:"none",background:"#2a2a3a",color:"#aaa",fontSize:15,cursor:"pointer",marginTop:10}}>취소</button>}
       </div>}
@@ -519,7 +533,7 @@ JSON 배열만 반환, 다른 텍스트 없이:
 
       {tab==="settings"&&<div style={{padding:20}}>
         <div style={{display:"flex",background:"#1a1a2e",borderRadius:12,padding:4,marginBottom:20}}>
-          {[["cat","📂 카테고리"],["rec","🔄 반복"],["api","🔑 API키"],["backup","💾 백업"]].map(([t,l])=>(
+          {[["cat","📂 카테고리"],["api","🔑 API키"],["backup","💾 백업"]].map(([t,l])=>(
             <button key={t} onClick={()=>setStab(t)} style={{flex:1,padding:"9px 0",borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:stab===t?"#667eea":"transparent",color:stab===t?"#fff":"#555"}}>{l}</button>
           ))}
         </div>
