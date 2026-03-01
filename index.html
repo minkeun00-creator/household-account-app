@@ -158,8 +158,36 @@ function App(){
   const [parsed,setParsed]=useState([]);
   const [parseErr,setParseErr]=useState("");
   const fileRef=useRef();
+  const importRef=useRef();
 
   const [toast,setToast]=useState("");
+  const importRef=useRef();
+
+  const exportData=()=>{
+    const data=JSON.stringify({expenses,cats,recs},null,2);
+    const blob=new Blob([data],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=`가계부_${today()}.json`;a.click();
+    URL.revokeObjectURL(url);
+    showToast("내보내기 완료!");
+  };
+
+  const importData=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        if(d.expenses)setExpenses(d.expenses);
+        if(d.cats)setCats(d.cats);
+        if(d.recs)setRecs(d.recs);
+        showToast(`가져오기 완료! ${d.expenses?.length||0}건`);
+      }catch{showToast("파일 오류: JSON 형식이 아닙니다");}
+    };
+    r.readAsText(f);
+    e.target.value="";
+  };
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(""),2500);};
 
   useEffect(()=>{LS.set("exp",expenses);},[expenses]);
@@ -493,7 +521,7 @@ JSON 배열만 반환, 다른 텍스트 없이:
 
       {tab==="settings"&&<div style={{padding:20}}>
         <div style={{display:"flex",background:"#1a1a2e",borderRadius:12,padding:4,marginBottom:20}}>
-          {[["cat","📂 카테고리"],["rec","🔄 반복"],["api","🔑 API키"]].map(([t,l])=>(
+          {[["cat","📂 카테고리"],["rec","🔄 반복"],["api","🔑 API키"],["backup","💾 백업"]].map(([t,l])=>(
             <button key={t} onClick={()=>setStab(t)} style={{flex:1,padding:"9px 0",borderRadius:10,border:"none",cursor:"pointer",fontSize:12,fontWeight:600,background:stab===t?"#667eea":"transparent",color:stab===t?"#fff":"#555"}}>{l}</button>
           ))}
         </div>
